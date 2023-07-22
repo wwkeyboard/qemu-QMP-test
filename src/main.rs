@@ -1,50 +1,36 @@
 use std::error::Error;
-use std::io;
-use tokio::io::Interest;
-use tokio::net::UnixStream;
+use std::io::{prelude::*, BufReader, BufWriter};
+use std::os::unix::net::UnixStream;
+use std::path::PathBuf;
+use std::time::Duration;
+use std::{env, thread};
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
-    let dir = tempfile::tempdir().unwrap();
-    let bind_path = dir.path().join("bind_path");
-    let stream = UnixStream::connect(bind_path).await?;
+fn main() -> Result<(), Box<dyn Error>> {
+    let mut args = env::args().into_iter();
 
-    loop {
-        let ready = stream
-            .ready(Interest::READABLE | Interest::WRITABLE)
-            .await?;
+    args.next(); // yeet the path of this executable
+    let socket_path = args.next().ok_or("must provide socket path")?;
+    println!("opening {:?}", socket_path);
+    let bind_path = PathBuf::from(socket_path);
 
-        if ready.is_readable() {
-            let mut data = vec![0; 1024];
-            // Try to read data, this may still fail with `WouldBlock`
-            // if the readiness event is a false positive.
-            match stream.try_read(&mut data) {
-                Ok(n) => {
-                    println!("read {} bytes", n);
-                }
-                Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                    continue;
-                }
-                Err(e) => {
-                    return Err(e.into());
-                }
-            }
-        }
+    let stream = UnixStream::connect(bind_path)?;
 
-        if ready.is_writable() {
-            // Try to write data, this may still fail with `WouldBlock`
-            // if the readiness event is a false positive.
-            match stream.try_write(b"hello world") {
-                Ok(n) => {
-                    println!("write {} bytes", n);
-                }
-                Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                    continue;
-                }
-                Err(e) => {
-                    return Err(e.into());
-                }
-            }
-        }
-    }
+    println!("listening");
+
+    let mut reader = BufReader::new(stream.try_clone().expect("Couldn't clone socket"));
+
+    thread::spawn(move || {
+        loop {
+            let mut response = String::new();
+            let len = reader.read_line(&mut response).expect("couldn't read from socket");
+            println!("{len}: {response}");
+         }
+    });
+
+    let mut writer = BufWriter::new(stream);
+    writer.write_fmt(format_args!("{{\"execute\": \"qmp_capabilities\", \"arguments\": {{ \"enable\": [\"oob\"]}}\n"))?;
+
+    thread::sleep(Duration::from_millis(10000));
+
+    Ok(())
 }
