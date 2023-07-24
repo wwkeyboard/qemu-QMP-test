@@ -29,7 +29,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut writer = BufWriter::new(stream);
     writer.write_fmt(format_args!(r#"{{"execute": }}"#))?;
-    writer.flush();
+    writer.flush()?;
 
     thread::sleep(Duration::from_millis(10000));
 
