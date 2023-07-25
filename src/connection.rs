@@ -1,10 +1,11 @@
-use std::io::{BufReader, BufWriter};
+use std::io::{prelude::*, BufReader, BufWriter};
 use std::os::unix::net::UnixStream;
 use std::path::PathBuf;
+use std::thread::{JoinHandle, self};
 
 pub struct Server {
     pub path: PathBuf,
-    pub reader: BufReader<UnixStream>,
+    pub reader_thread: JoinHandle<()>,
     pub writer: BufWriter<UnixStream>,
 }
 
@@ -15,10 +16,29 @@ impl Server {
         let reader = BufReader::new(stream.try_clone().expect("Couldn't clone socket"));
         let writer = BufWriter::new(stream);
 
+        let listen_handle = listen(reader);
+
         Ok(Server {
             path: bind_path,
-            reader: reader,
+            reader_thread: listen_handle,
             writer: writer,
         })
     }
+
+    pub fn send(&mut self, message: String) -> Result<(), std::io::Error>{
+        self.writer.write(message.as_bytes())?;
+        self.writer.flush()?;
+        Ok(())
+    }
+}
+
+
+fn listen(mut reader: BufReader<UnixStream>) -> JoinHandle<()> {
+    thread::spawn(move || {
+        loop {
+            let mut response = String::new();
+            let len = reader.read_line(&mut response).expect("couldn't read from socket");
+            println!("{len}: {response}");
+         }
+    })
 }
