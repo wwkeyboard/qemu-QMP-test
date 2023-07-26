@@ -13,7 +13,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("listening");
 
     // Sending a bad command to make sure the server yells back at us
-    server.send(r#"{{"execute": }}"#.into());
+    server.send(r#"{{"execute": }}"#.into())?;
 
     thread::sleep(Duration::from_millis(10000));
 
