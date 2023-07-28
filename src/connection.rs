@@ -3,6 +3,8 @@ use std::os::unix::net::UnixStream;
 use std::path::PathBuf;
 use std::thread::{JoinHandle, self};
 
+use crate::messages::server::{ReceivedMessage, self};
+
 pub struct Server {
     pub path: PathBuf,
     pub reader_thread: JoinHandle<()>,
@@ -32,13 +34,17 @@ impl Server {
     }
 }
 
-
 fn listen(mut reader: BufReader<UnixStream>) -> JoinHandle<()> {
     thread::spawn(move || {
         loop {
             let mut response = String::new();
             let len = reader.read_line(&mut response).expect("couldn't read from socket");
+
             println!("{len}: {response}");
          }
     })
+}
+
+fn parse_response(data: String) -> Result<ReceivedMessage, String> {
+    server::parse(data).or(Err("parsing response from server".into()))
 }

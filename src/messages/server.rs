@@ -1,5 +1,12 @@
+use std::fmt;
+
 use serde::Deserialize;
 use serde::Serialize;
+
+#[derive(Deserialize)]
+pub enum ReceivedMessage {
+    Greeting,
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -28,6 +35,19 @@ pub struct Qemu {
     pub micro: u64,
     pub minor: u64,
     pub major: u64,
+}
+
+#[derive(Debug, Clone)]
+pub struct MessageError;
+
+impl fmt::Display for MessageError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "error parsing message")
+    }
+}
+
+pub fn parse(data: String) -> Result<ReceivedMessage, MessageError> {
+    serde_json::from_str(&data).map_err(|_| MessageError)
 }
 
 #[cfg(test)]
