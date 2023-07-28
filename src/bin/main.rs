@@ -10,8 +10,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     
     let mut server = Server::new(socket_path)?;
 
-    println!("listening");
-
     // Sending a bad command to make sure the server yells back at us
     server.send(r#"{{"execute": }}"#.into())?;
 
