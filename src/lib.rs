@@ -1,4 +1,4 @@
 pub mod connection;
-pub mod commands{
+pub mod messages{
    pub  mod server;
 }
