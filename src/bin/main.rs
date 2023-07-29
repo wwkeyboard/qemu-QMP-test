@@ -9,6 +9,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     
     let mut server = Server::new(socket_path)?;
 
+    thread::sleep(Duration::from_millis(10000));
+
     // Sending a bad command to make sure the server yells back at us
     server.send(r#"{{"execute": }}"#.into())?;
 
