@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::thread::{JoinHandle, self};
 
 use anyhow::Result;
-use log::info;
+use log::{info, debug};
 use crate::messages::server::{ReceivedMessage, self};
 
 pub struct Server {
@@ -30,6 +30,7 @@ impl Server {
     }
 
     pub fn send(&mut self, message: String) -> Result<(), std::io::Error>{
+        debug!(" sending   > {}", message.trim());
         self.writer.write(message.as_bytes())?;
         self.writer.flush()?;
         Ok(())
@@ -40,17 +41,17 @@ fn listen(mut reader: BufReader<UnixStream>) -> JoinHandle<()> {
     thread::spawn(move || {
         loop {
             let mut response = String::new();
-            let len = reader.read_line(&mut response).expect("couldn't read from socket");
+            let _len = reader.read_line(&mut response).expect("couldn't read from socket");
+            debug!(" receiving < {}", response.trim());
 
-            let r = parse_response(response);
-
-            println!("{len}: {:?}", r);
+            // TODO: do something with the results
+            let _r = parse_response(response);
          }
     })
 }
 
 fn parse_response(data: String) -> Result<ReceivedMessage> {
-    info!("(parsing): {}", data.clone());
+    info!(" parsing   : {}", data.clone().trim());
     
     server::parse(data.clone())
 }
