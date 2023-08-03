@@ -3,8 +3,8 @@ use std::os::unix::net::UnixStream;
 use std::path::PathBuf;
 use std::thread::{JoinHandle, self};
 
+use anyhow::Result;
 use log::info;
-
 use crate::messages::server::{ReceivedMessage, self};
 
 pub struct Server {
@@ -49,7 +49,7 @@ fn listen(mut reader: BufReader<UnixStream>) -> JoinHandle<()> {
     })
 }
 
-fn parse_response(data: String) -> Result<ReceivedMessage, String> {
+fn parse_response(data: String) -> Result<ReceivedMessage> {
     info!("(parsing): {}", data.clone());
     
     server::parse(data.clone())

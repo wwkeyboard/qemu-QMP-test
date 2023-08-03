@@ -1,12 +1,12 @@
-use std::error::Error;
 use std::time::Duration;
 use std::{env, thread};
 
+use anyhow::{Result, Context};
 use qemu_qmp_test::connection::Server;
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<()> {
     pretty_env_logger::init();
-    
+
     let socket_path = path()?;
     
     let mut server = Server::new(socket_path)?;
@@ -21,9 +21,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn path() -> Result<String, Box<dyn Error>> {
+fn path() -> Result<String> {
     let mut args = env::args().into_iter();
     args.next();
-    let socket_path = args.next().ok_or("must provide socket path")?;
+    let socket_path = args.next().context("must provide socket path")?;
     Ok(socket_path)
 }
