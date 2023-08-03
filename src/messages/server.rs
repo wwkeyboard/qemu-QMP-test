@@ -3,7 +3,7 @@ use std::fmt;
 use serde::Deserialize;
 use serde::Serialize;
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub enum ReceivedMessage {
     Greeting,
 }

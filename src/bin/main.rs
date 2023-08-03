@@ -5,6 +5,8 @@ use std::{env, thread};
 use qemu_qmp_test::connection::Server;
 
 fn main() -> Result<(), Box<dyn Error>> {
+    pretty_env_logger::init();
+    
     let socket_path = path()?;
     
     let mut server = Server::new(socket_path)?;
