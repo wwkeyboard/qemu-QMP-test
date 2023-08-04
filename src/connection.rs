@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::thread::{JoinHandle, self};
 
 use anyhow::Result;
-use log::{info, debug};
+use log::{debug, trace};
 use crate::messages::server::{ReceivedMessage, self};
 
 pub struct Server {
@@ -51,7 +51,7 @@ fn listen(mut reader: BufReader<UnixStream>) -> JoinHandle<()> {
 }
 
 fn parse_response(data: String) -> Result<ReceivedMessage> {
-    info!(" parsing   : {}", data.clone().trim());
+    trace!(" parsing   : {}", data.clone().trim());
     
     server::parse(data.clone())
 }
