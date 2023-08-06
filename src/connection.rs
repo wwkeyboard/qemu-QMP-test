@@ -1,11 +1,11 @@
 use std::io::{prelude::*, BufReader, BufWriter};
 use std::os::unix::net::UnixStream;
 use std::path::PathBuf;
-use std::thread::{JoinHandle, self};
+use std::thread::{self, JoinHandle};
 
+use crate::messages::server::{self, ReceivedMessage};
 use anyhow::Result;
 use log::{debug, trace};
-use crate::messages::server::{ReceivedMessage, self};
 
 pub struct Server {
     pub path: PathBuf,
@@ -25,13 +25,14 @@ impl Server {
         Ok(Server {
             path: bind_path,
             reader_thread: listen_handle,
-            writer: writer,
+            writer,
         })
     }
 
-    pub fn send(&mut self, message: String) -> Result<(), std::io::Error>{
+    pub fn send(&mut self, message: String) -> Result<(), std::io::Error> {
         debug!(" sending   > {}", message.trim());
-        self.writer.write(message.as_bytes())?;
+        let amount = self.writer.write(message.as_bytes())?;
+        trace!("sent {} bytes", amount);
         self.writer.flush()?;
         Ok(())
     }
@@ -41,17 +42,19 @@ fn listen(mut reader: BufReader<UnixStream>) -> JoinHandle<()> {
     thread::spawn(move || {
         loop {
             let mut response = String::new();
-            let _len = reader.read_line(&mut response).expect("couldn't read from socket");
+            let _len = reader
+                .read_line(&mut response)
+                .expect("couldn't read from socket");
             debug!(" receiving < {}", response.trim());
 
             // TODO: do something with the results
             let _r = parse_response(response);
-         }
+        }
     })
 }
 
 fn parse_response(data: String) -> Result<ReceivedMessage> {
     trace!(" parsing   : {}", data.clone().trim());
-    
+
     server::parse(data.clone())
 }
