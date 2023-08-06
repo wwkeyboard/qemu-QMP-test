@@ -1,3 +1,5 @@
+//! QMP messages that originate from the server
+
 use std::fmt;
 
 use anyhow::{anyhow, Result};
