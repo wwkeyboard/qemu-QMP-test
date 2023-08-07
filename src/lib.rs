@@ -1,4 +1,5 @@
 pub mod connection;
-pub mod messages{
-   pub  mod server;
+pub mod messages {
+    pub mod client;
+    pub mod server;
 }

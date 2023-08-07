@@ -5,7 +5,7 @@ use std::thread::{self, JoinHandle};
 
 use crate::messages::server::{self, ReceivedMessage};
 use anyhow::Result;
-use log::{debug, trace};
+use log::{debug, error, trace};
 
 pub struct Server {
     pub path: PathBuf,
@@ -47,8 +47,15 @@ fn listen(mut reader: BufReader<UnixStream>) -> JoinHandle<()> {
                 .expect("couldn't read from socket");
             debug!(" receiving < {}", response.trim());
 
-            // TODO: do something with the results
-            let _r = parse_response(response);
+            // TODO: break these apart, we need to decide where
+            // the split is between the thread that reads and parses messages,
+            // and the thread(s) that handle the responses
+            match parse_response(response) {
+                Ok(r) => handle_response(r),
+                Err(e) => {
+                    error!("Couldn't parse incomming message {e}");
+                }
+            };
         }
     })
 }
@@ -57,4 +64,13 @@ fn parse_response(data: String) -> Result<ReceivedMessage> {
     trace!(" parsing   : {}", data.clone().trim());
 
     server::parse(data.clone())
+}
+
+fn handle_response(message: ReceivedMessage) {
+    match message {
+        ReceivedMessage::Greeting(_g) => {
+            println!(">> received greeting ");
+            // respond
+        }
+    }
 }

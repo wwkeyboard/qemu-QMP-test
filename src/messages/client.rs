@@ -1,5 +1,5 @@
 //! QMP messages that originate from the client
-//! 
+//!
 //! Provides types that model the commands you can send from the client.
 
 use serde::Deserialize;
@@ -18,13 +18,10 @@ pub struct Message {
 
 pub fn capabilities() -> Message {
     let mut args = Map::new();
-    args.insert(
-        "enable".into(),
-        Value::Array(vec!["oob".into()])
-    );
+    args.insert("enable".into(), Value::Array(vec!["oob".into()]));
 
-    Message { 
-        execute: "qmp_capabilities".into(), 
+    Message {
+        execute: "qmp_capabilities".into(),
         arguments: args,
     }
 }
@@ -35,19 +32,12 @@ mod tests {
 
     #[test]
     fn empty_capabilities() {
-        let result: Message = serde_json::from_str(
-            &serde_json::to_string(
-                &capabilities()
-            ).unwrap()
-        ).unwrap();
+        let result: Message =
+            serde_json::from_str(&serde_json::to_string(&capabilities()).unwrap()).unwrap();
 
         assert_eq!(
-            result.arguments.get("enable"), 
-            Some(
-                &Value::Array(
-                    vec![Value::String("oob".into())]
-                )
-            )
+            result.arguments.get("enable"),
+            Some(&Value::Array(vec![Value::String("oob".into())]))
         );
     }
 }
