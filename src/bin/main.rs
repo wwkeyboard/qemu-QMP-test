@@ -1,17 +1,15 @@
-use std::time::Duration;
-use std::{env, thread};
+use std::env;
 
 use anyhow::{Context, Result};
 use qemu_qmp_test::connection::Server;
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     pretty_env_logger::init();
 
     let socket_path = path()?;
 
-    let mut server = Server::new(socket_path)?;
-
-    thread::sleep(Duration::from_millis(60000));
+    let mut server = Server::new(socket_path).await?;
 
     Ok(())
 }
