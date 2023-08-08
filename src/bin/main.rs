@@ -9,7 +9,9 @@ async fn main() -> Result<()> {
 
     let socket_path = path()?;
 
-    let mut server = Server::new(socket_path).await?;
+    let server = Server::new(socket_path).await?;
+
+    server.wait().await?;
 
     Ok(())
 }

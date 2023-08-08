@@ -1,44 +1,49 @@
-use std::io::{prelude::*, BufReader, BufWriter};
-use std::os::unix::net::UnixStream;
+//use std::io::{prelude::*};
+//use std::os::unix::net::UnixStream;
 use std::path::PathBuf;
+use std::io::Cursor;
 
 use crate::messages::client;
 use crate::messages::server::{self, ReceivedMessage};
 use anyhow::Result;
 use log::{debug, error, trace};
+use tokio::net::UnixStream;
+use tokio::net::unix::{OwnedWriteHalf, OwnedReadHalf};
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::task::JoinHandle;
+use tokio::io::{BufReader, AsyncBufReadExt, BufWriter, AsyncWriteExt};
 
 pub struct Server {
     pub path: PathBuf,
-    pub reader_thread: JoinHandle<()>,
+    reader_handle: JoinHandle<()>,
+    sender_handle: JoinHandle<()>,
     pub event_tx: Sender<client::Message>,
 }
 
 impl Server {
     pub async fn new(socket_path: String) -> Result<Server> {
         let bind_path = PathBuf::from(socket_path);
-        let stream = UnixStream::connect(&bind_path)?;
+        let stream = UnixStream::connect(&bind_path).await?;
 
-        // Grabs the first message, which should be a Greeting. Sends
-        // a response about oob capabilities.
-        // unwrap because if this fails we have to bail the program
-        negotiate_capabilities(stream.try_clone()?)?;
+        let (rx, tx) = stream.into_split();
+        let reader = BufReader::new(rx);
+        let writer = BufWriter::new(tx);
 
-        let reader = BufReader::new(stream.try_clone()?);
-        let writer = BufWriter::new(stream);
-
+        // start the sender
         let (event_tx, event_rx): (Sender<client::Message>, Receiver<client::Message>) =
             mpsc::channel(10);
-        start_sender(event_rx, writer).await?;
+        let sender_handle = start_sender(event_rx, writer).await;
+        trace!("sender running");
 
         // Start the listen loop
-        let listen_handle = listen(reader).await;
+        let reader_handle = start_listener(reader, event_tx.clone()).await;
+        trace!("listener running");
 
         Ok(Server {
             path: bind_path,
-            reader_thread: listen_handle,
             event_tx,
+            reader_handle,
+            sender_handle,
         })
     }
 
@@ -46,70 +51,72 @@ impl Server {
         self.event_tx.send(message).await?;
         Ok(())
     }
+
+    pub async fn wait(self) -> Result<()> {
+        tokio::select! {
+            _ = self.sender_handle => Ok(()),
+            _ = self.reader_handle => Ok(()),
+        }
+    }
 }
 
-fn negotiate_capabilities(stream: UnixStream) -> Result<()> {
-    let mut reader = BufReader::new(stream.try_clone().expect("Couldn't clone socket"));
-    let mut writer = BufWriter::new(stream);
-
-    let mut response = String::new();
-    let _len = reader
-        .read_line(&mut response)
-        .expect("couldn't read from socket");
-
-    debug!(" negotiating < {}", response.trim());
-
-    let capabilities = client::capabilities().encode()?;
-    debug!(" negotiating > {capabilities}");
-
-    writer.write(capabilities.as_bytes())?;
-    Ok(())
-}
-
-async fn listen(mut reader: BufReader<UnixStream>) -> JoinHandle<()> {
+async fn start_listener(
+    reader: BufReader<OwnedReadHalf>,
+    sender: Sender<client::Message>,
+) -> JoinHandle<()> {
+    
     tokio::spawn(async move {
-        let mut response = String::new();
-        loop {
-            let _len = reader
-                .read_line(&mut response)
-                .expect("couldn't read from socket");
+        let mut lines = reader.lines();
+        while let Ok(Some(response)) = lines.next_line().await {
             debug!(" receiving < {}", response.trim());
 
-            // TODO: break these apart, we need to decide where the
-            // split is between the thread that reads and parses
-            // messages, and the thread(s) that handle the responses
-            match parse_response(&response) {
-                Ok(r) => handle_response(r),
+            let parsed_response = match server::parse(response) {
+                Ok(r) => r,
                 Err(e) => {
+                    // this is weird because we just notify the user that the message sucked and 
+                    // then happily move along to the next one
                     error!("Couldn't parse incomming message {e}");
+                    continue;
                 }
             };
+
+            if let Err(_) = handle_response(&parsed_response, sender.clone()).await {
+                error!("handling response {:?}", parsed_response);
+            }
+            
         }
     })
 }
 
-fn parse_response(data: &String) -> Result<ReceivedMessage> {
-    trace!(" parsing   : {}", data.clone().trim());
-
-    server::parse(data.clone())
-}
-
-fn handle_response(message: ReceivedMessage) {
+async fn handle_response(message: &ReceivedMessage, sender: Sender<client::Message>) -> Result<()> {
     match message {
         ReceivedMessage::Greeting(_g) => {
-            println!(">> received greeting ");
-            // respond
+            sender.send(client::capabilities()).await?;
+            trace!(">> sent capabilities");
         }
     }
+    Ok(())
 }
 
 async fn start_sender(
     mut events: Receiver<client::Message>,
-    mut writer: BufWriter<UnixStream>,
-) -> Result<()> {
-    while let Some(event) = events.recv().await {
-        let payload = event.encode()?;
-        writer.write(payload.as_bytes())?;
-    }
-    Ok(())
+    mut writer: BufWriter<OwnedWriteHalf>,
+) -> JoinHandle<()> {
+    tokio::spawn(async move {
+        while let Some(event) = events.recv().await {
+            trace!("sending event");
+            match event.encode() {
+                Ok(payload) => {
+                    trace!("sending {payload}");
+                    // if we can't write to the socket that's a catastrophic error
+                    writer.write_all(payload.as_bytes()).await.unwrap();
+                    writer.flush().await.unwrap();
+                }
+                Err(e) => {
+                    error!("couldn't encode event {e}");
+                }
+            }
+        }
+        trace!("send events channel closed");
+    })
 }
