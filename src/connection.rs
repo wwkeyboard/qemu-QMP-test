@@ -47,9 +47,9 @@ fn listen(mut reader: BufReader<UnixStream>) -> JoinHandle<()> {
                 .expect("couldn't read from socket");
             debug!(" receiving < {}", response.trim());
 
-            // TODO: break these apart, we need to decide where
-            // the split is between the thread that reads and parses messages,
-            // and the thread(s) that handle the responses
+            // TODO: break these apart, we need to decide where the
+            // split is between the thread that reads and parses
+            // messages, and the thread(s) that handle the responses
             match parse_response(response) {
                 Ok(r) => handle_response(r),
                 Err(e) => {
