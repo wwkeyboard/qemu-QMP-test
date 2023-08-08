@@ -3,6 +3,7 @@ use std::os::unix::net::UnixStream;
 use std::path::PathBuf;
 use std::thread::{self, JoinHandle};
 
+use crate::messages::client;
 use crate::messages::server::{self, ReceivedMessage};
 use anyhow::Result;
 use log::{debug, error, trace};
@@ -14,13 +15,21 @@ pub struct Server {
 }
 
 impl Server {
-    pub fn new(socket_path: String) -> Result<Server, std::io::Error> {
+    pub fn new(socket_path: String) -> Result<Server> {
         let bind_path = PathBuf::from(socket_path);
         let stream = UnixStream::connect(&bind_path)?;
-        let reader = BufReader::new(stream.try_clone().expect("Couldn't clone socket"));
+
+        // Grabs the first message, which should be a Greeting. Sends
+        // a response about oob capabilities.
+        // unwrap because if this fails we have to bail the program
+        negotiate_capabilities(stream.try_clone()?)?;
+
+        let reader = BufReader::new(stream.try_clone()?);
         let writer = BufWriter::new(stream);
 
+        // Start the listen loop
         let listen_handle = listen(reader);
+
 
         Ok(Server {
             path: bind_path,
@@ -36,6 +45,26 @@ impl Server {
         self.writer.flush()?;
         Ok(())
     }
+}
+
+fn negotiate_capabilities(
+    stream: UnixStream
+) -> Result<()> {
+    let mut reader = BufReader::new(stream.try_clone().expect("Couldn't clone socket"));
+    let mut writer = BufWriter::new(stream);
+
+    let mut response = String::new();
+    let _len = reader
+        .read_line(&mut response)
+        .expect("couldn't read from socket");
+
+    debug!(" negotiating < {}", response.trim());
+
+    let capabilities = client::capabilities().encode()?;
+    debug!(" negotiating > {capabilities}");
+    
+    writer.write(capabilities.as_bytes())?;
+    Ok(())
 }
 
 fn listen(mut reader: BufReader<UnixStream>) -> JoinHandle<()> {

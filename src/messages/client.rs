@@ -2,6 +2,7 @@
 //!
 //! Provides types that model the commands you can send from the client.
 
+use anyhow::Result;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::{Map, Value};
@@ -14,6 +15,12 @@ pub struct Message {
     // if the type system made it impossible to represent
     // incorrect values.
     pub arguments: Map<String, Value>,
+}
+
+impl Message {
+    pub fn encode(&self) -> Result<String> {
+        Ok(serde_json::to_string(self)?)
+    }
 }
 
 pub fn capabilities() -> Message {
