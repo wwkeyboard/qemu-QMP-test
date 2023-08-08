@@ -11,12 +11,7 @@ fn main() -> Result<()> {
 
     let mut server = Server::new(socket_path)?;
 
-    thread::sleep(Duration::from_millis(1000));
-
-    // Sending a bad command to make sure the server yells back at us
-    server.send(r#"{{"execute": }}"#.into())?;
-
-    thread::sleep(Duration::from_millis(10000));
+    thread::sleep(Duration::from_millis(60000));
 
     Ok(())
 }
