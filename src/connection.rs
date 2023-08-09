@@ -1,17 +1,14 @@
-//use std::io::{prelude::*};
-//use std::os::unix::net::UnixStream;
 use std::path::PathBuf;
-use std::io::Cursor;
 
 use crate::messages::client;
 use crate::messages::server::{self, ReceivedMessage};
 use anyhow::Result;
 use log::{debug, error, trace};
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, BufWriter};
+use tokio::net::unix::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::UnixStream;
-use tokio::net::unix::{OwnedWriteHalf, OwnedReadHalf};
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::task::JoinHandle;
-use tokio::io::{BufReader, AsyncBufReadExt, BufWriter, AsyncWriteExt};
 
 pub struct Server {
     pub path: PathBuf,
@@ -64,7 +61,6 @@ async fn start_listener(
     reader: BufReader<OwnedReadHalf>,
     sender: Sender<client::Message>,
 ) -> JoinHandle<()> {
-    
     tokio::spawn(async move {
         let mut lines = reader.lines();
         while let Ok(Some(response)) = lines.next_line().await {
@@ -73,7 +69,7 @@ async fn start_listener(
             let parsed_response = match server::parse(response) {
                 Ok(r) => r,
                 Err(e) => {
-                    // this is weird because we just notify the user that the message sucked and 
+                    // this is weird because we just notify the user that the message sucked and
                     // then happily move along to the next one
                     error!("Couldn't parse incomming message {e}");
                     continue;
@@ -83,7 +79,6 @@ async fn start_listener(
             if let Err(_) = handle_response(&parsed_response, sender.clone()).await {
                 error!("handling response {:?}", parsed_response);
             }
-            
         }
     })
 }
