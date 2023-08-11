@@ -88,6 +88,7 @@ async fn handle_response(message: &ReceivedMessage, sender: Sender<client::Messa
         ReceivedMessage::Greeting(_g) => {
             sender.send(client::capabilities()).await?;
         }
+        ReceivedMessage::Return(r) => trace!("received return value {r}"),
     }
     Ok(())
 }

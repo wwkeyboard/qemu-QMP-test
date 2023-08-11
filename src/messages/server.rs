@@ -1,16 +1,20 @@
 //! QMP messages that originate from the server
 
-use std::fmt;
-
 use anyhow::{anyhow, Result};
 use serde::Deserialize;
 use serde::Serialize;
+use serde_json::Value;
 
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
 pub enum ReceivedMessage {
     Greeting(Greeting),
+    Return(Value),
 }
+
+//
+// Greeting message
+//
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -41,13 +45,15 @@ pub struct Qemu {
     pub major: u64,
 }
 
-#[derive(Debug, Clone)]
-pub struct MessageError;
+//
+// Return message
+//
 
-impl fmt::Display for MessageError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "error parsing message")
-    }
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Return {
+    #[serde(rename = "return")]
+    pub ret: Value,
 }
 
 pub fn parse(data: String) -> Result<ReceivedMessage> {
