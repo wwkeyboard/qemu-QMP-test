@@ -76,8 +76,8 @@ async fn start_listener(
                 }
             };
 
-            if let Err(_) = handle_response(&parsed_response, sender.clone()).await {
-                error!("handling response {:?}", parsed_response);
+            if let Err(e) = handle_response(&parsed_response, sender.clone()).await {
+                error!("handling response {:?}, {e}", parsed_response);
             }
         }
     })
@@ -87,7 +87,6 @@ async fn handle_response(message: &ReceivedMessage, sender: Sender<client::Messa
     match message {
         ReceivedMessage::Greeting(_g) => {
             sender.send(client::capabilities()).await?;
-            trace!(">> sent capabilities");
         }
     }
     Ok(())
