@@ -9,7 +9,7 @@ use serde_json::Value;
 #[serde(untagged)]
 pub enum ReceivedMessage {
     Greeting(Greeting),
-    Return(Value),
+    Return(Return),
 }
 
 //
@@ -62,6 +62,8 @@ pub fn parse(data: String) -> Result<ReceivedMessage> {
 
 #[cfg(test)]
 mod tests {
+    use serde_json::json;
+
     use super::*;
 
     #[test]
@@ -78,5 +80,13 @@ mod tests {
 
         // if this doesn't panic we assume the message parsed correctly
         let _message: ReceivedMessage = serde_json::from_str(message).unwrap();
+    }
+
+    #[test]
+    fn parses_return_values() {
+        let message = String::from(r#"{"return": {}}"#);
+        if let ReceivedMessage::Return(data) = parse(message).unwrap() {
+            assert_eq!(data.ret, json!({}));
+        };
     }
 }
