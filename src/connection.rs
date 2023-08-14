@@ -18,9 +18,8 @@ pub struct Server {
 }
 
 impl Server {
-    pub async fn new(socket_path: String) -> Result<Server> {
-        let bind_path = PathBuf::from(socket_path);
-        let stream = UnixStream::connect(&bind_path).await?;
+    pub async fn new(socket_path: PathBuf) -> Result<Server> {
+        let stream = UnixStream::connect(&socket_path).await?;
 
         let (rx, tx) = stream.into_split();
         let reader = BufReader::new(rx);
@@ -37,7 +36,7 @@ impl Server {
         trace!("listener running");
 
         Ok(Server {
-            path: bind_path,
+            path: socket_path,
             event_tx,
             reader_handle,
             sender_handle,
