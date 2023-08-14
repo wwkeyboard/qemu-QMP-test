@@ -15,6 +15,8 @@ pub struct Message {
     // if the type system made it impossible to represent
     // incorrect values.
     pub arguments: Map<String, Value>,
+
+    id: usize,
 }
 
 impl Message {
@@ -23,13 +25,14 @@ impl Message {
     }
 }
 
-pub fn capabilities() -> Message {
+pub fn capabilities(id: usize) -> Message {
     let mut args = Map::new();
     args.insert("enable".into(), Value::Array(vec!["oob".into()]));
 
     Message {
         execute: "qmp_capabilities".into(),
         arguments: args,
+        id
     }
 }
 
@@ -40,11 +43,21 @@ mod tests {
     #[test]
     fn empty_capabilities() {
         let result: Message =
-            serde_json::from_str(&serde_json::to_string(&capabilities()).unwrap()).unwrap();
+            serde_json::from_str(&serde_json::to_string(&capabilities(1)).unwrap()).unwrap();
 
         assert_eq!(
             result.arguments.get("enable"),
             Some(&Value::Array(vec![Value::String("oob".into())]))
         );
+    }
+
+    #[test]
+    fn sets_an_id() {
+        let id = 1;
+
+        let result: Message = serde_json::from_str(&serde_json::to_string(&capabilities(id)).unwrap()).unwrap();
+        assert_eq!(
+            result.id, id
+        )
     }
 }

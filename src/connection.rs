@@ -85,7 +85,7 @@ async fn start_listener(
 async fn handle_response(message: &ReceivedMessage, sender: Sender<client::Message>) -> Result<()> {
     match message {
         ReceivedMessage::Greeting(_g) => {
-            sender.send(client::capabilities()).await?;
+            sender.send(client::capabilities(1)).await?;
         }
         ReceivedMessage::Return(r) => trace!("received return value {r:#?}"),
     }
