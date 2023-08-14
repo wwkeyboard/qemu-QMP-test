@@ -10,12 +10,8 @@ pub struct Args {
     #[arg(short, long)]
     pub path: PathBuf,
 
-    /// Number of times to greet
-    #[arg(short, long, default_value_t = true)]
-    stream: bool,
-
     #[command(subcommand)]
-    command: Option<Commands>,
+    pub command: Option<Commands>,
 }
 
 impl Args {
@@ -25,7 +21,7 @@ impl Args {
 }
 
 #[derive(Subcommand, Debug)]
-enum Commands {
+pub enum Commands {
     /// sends a single command on the socket
     Send {
         /// command to send
