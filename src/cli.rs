@@ -27,5 +27,5 @@ pub enum Commands {
         /// command to send
         #[arg(short, long)]
         payload: String,
-    }
+    },
 }

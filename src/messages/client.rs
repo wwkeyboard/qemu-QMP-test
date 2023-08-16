@@ -32,7 +32,7 @@ pub fn capabilities(id: usize) -> Message {
     Message {
         execute: "qmp_capabilities".into(),
         arguments: args,
-        id
+        id,
     }
 }
 
@@ -55,9 +55,8 @@ mod tests {
     fn sets_an_id() {
         let id = 1;
 
-        let result: Message = serde_json::from_str(&serde_json::to_string(&capabilities(id)).unwrap()).unwrap();
-        assert_eq!(
-            result.id, id
-        )
+        let result: Message =
+            serde_json::from_str(&serde_json::to_string(&capabilities(id)).unwrap()).unwrap();
+        assert_eq!(result.id, id)
     }
 }

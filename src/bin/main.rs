@@ -1,5 +1,5 @@
 use anyhow::Result;
-use qemu_qmp_test::{connection::Server, cli::Args, cli::Commands};
+use qemu_qmp_test::{cli::Args, cli::Commands, connection::Server};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -9,7 +9,7 @@ async fn main() -> Result<()> {
 
     let server = Server::new(args.path).await?;
 
-    if let Some(Commands::Send{payload}) = args.command {
+    if let Some(Commands::Send { payload }) = args.command {
         println!("--- {payload}");
     }
 
