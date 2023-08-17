@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::messages::client;
+use crate::messages::client::{self, Message};
 use crate::messages::server::{self, ReceivedMessage};
 use anyhow::Result;
 use log::{debug, error, trace};
@@ -14,7 +14,7 @@ pub struct Server {
     pub path: PathBuf,
     reader_handle: JoinHandle<()>,
     sender_handle: JoinHandle<()>,
-    pub event_tx: Sender<client::Message>,
+    pub event_tx: Sender<Message>,
 }
 
 impl Server {
@@ -26,7 +26,7 @@ impl Server {
         let writer = BufWriter::new(tx);
 
         // start the sender
-        let (event_tx, event_rx): (Sender<client::Message>, Receiver<client::Message>) =
+        let (event_tx, event_rx): (Sender<Message>, Receiver<Message>) =
             mpsc::channel(10);
         let sender_handle = start_sender(event_rx, writer).await;
         trace!("sender running");
@@ -43,7 +43,7 @@ impl Server {
         })
     }
 
-    pub async fn send(&mut self, message: client::Message) -> Result<()> {
+    pub async fn send(&mut self, message: Message) -> Result<()> {
         self.event_tx.send(message).await?;
         Ok(())
     }
@@ -58,7 +58,7 @@ impl Server {
 
 async fn start_listener(
     reader: BufReader<OwnedReadHalf>,
-    sender: Sender<client::Message>,
+    sender: Sender<Message>,
 ) -> JoinHandle<()> {
     tokio::spawn(async move {
         let mut lines = reader.lines();
