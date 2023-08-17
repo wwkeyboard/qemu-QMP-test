@@ -68,8 +68,9 @@ async fn start_listener(
             let parsed_response = match server::parse(response) {
                 Ok(r) => r,
                 Err(e) => {
-                    // this is weird because we just notify the user that the message sucked and
-                    // then happily move along to the next one
+                    // this is weird because we just notify the user
+                    // that the message sucked and then happily move
+                    // along to the next one
                     error!("Couldn't parse incomming message {e}");
                     continue;
                 }
@@ -82,7 +83,7 @@ async fn start_listener(
     })
 }
 
-async fn handle_response(message: &ReceivedMessage, sender: Sender<client::Message>) -> Result<()> {
+async fn handle_response(message: &ReceivedMessage, sender: Sender<Message>) -> Result<()> {
     match message {
         ReceivedMessage::Greeting(_g) => {
             sender.send(client::capabilities(1)).await?;
@@ -93,7 +94,7 @@ async fn handle_response(message: &ReceivedMessage, sender: Sender<client::Messa
 }
 
 async fn start_sender(
-    mut events: Receiver<client::Message>,
+    mut events: Receiver<Message>,
     mut writer: BufWriter<OwnedWriteHalf>,
 ) -> JoinHandle<()> {
     tokio::spawn(async move {
