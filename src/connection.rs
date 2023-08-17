@@ -26,8 +26,7 @@ impl Server {
         let writer = BufWriter::new(tx);
 
         // start the sender
-        let (event_tx, event_rx): (Sender<Message>, Receiver<Message>) =
-            mpsc::channel(10);
+        let (event_tx, event_rx): (Sender<Message>, Receiver<Message>) = mpsc::channel(10);
         let sender_handle = start_sender(event_rx, writer).await;
         trace!("sender running");
 
