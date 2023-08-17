@@ -21,17 +21,15 @@ impl Server {
     pub async fn new(socket_path: PathBuf) -> Result<Server> {
         let stream = UnixStream::connect(&socket_path).await?;
 
-        let (rx, tx) = stream.into_split();
-        let reader = BufReader::new(rx);
-        let writer = BufWriter::new(tx);
+        let (socket_rx, socket_tx) = stream.into_split();
 
         // start the sender
         let (event_tx, event_rx): (Sender<Message>, Receiver<Message>) = mpsc::channel(10);
-        let sender_handle = start_sender(event_rx, writer).await;
+        let sender_handle = start_sender(event_rx, socket_tx).await;
         trace!("sender running");
 
         // Start the listen loop
-        let reader_handle = start_listener(reader, event_tx.clone()).await;
+        let reader_handle = start_listener(socket_rx, event_tx.clone()).await;
         trace!("listener running");
 
         Ok(Server {
@@ -55,10 +53,9 @@ impl Server {
     }
 }
 
-async fn start_listener(
-    reader: BufReader<OwnedReadHalf>,
-    sender: Sender<Message>,
-) -> JoinHandle<()> {
+async fn start_listener(socket_rx: OwnedReadHalf, sender: Sender<Message>) -> JoinHandle<()> {
+    let reader = BufReader::new(socket_rx);
+
     tokio::spawn(async move {
         let mut lines = reader.lines();
         while let Ok(Some(response)) = lines.next_line().await {
@@ -92,10 +89,8 @@ async fn handle_response(message: &ReceivedMessage, sender: Sender<Message>) -> 
     Ok(())
 }
 
-async fn start_sender(
-    mut events: Receiver<Message>,
-    mut writer: BufWriter<OwnedWriteHalf>,
-) -> JoinHandle<()> {
+async fn start_sender(mut events: Receiver<Message>, socket_tx: OwnedWriteHalf) -> JoinHandle<()> {
+    let mut writer = BufWriter::new(socket_tx);
     tokio::spawn(async move {
         while let Some(event) = events.recv().await {
             trace!("sending event");
