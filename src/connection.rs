@@ -4,8 +4,8 @@ use crate::messages::client::{self, Message};
 use crate::messages::server::{self, ReceivedMessage};
 use anyhow::Result;
 use log::{debug, error, trace};
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, BufWriter};
-use tokio::net::unix::{OwnedReadHalf, OwnedWriteHalf};
+use tokio::io::AsyncBufReadExt;
+use tokio::io::{AsyncRead, AsyncWriteExt, BufReader, BufWriter};
 use tokio::net::UnixStream;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::task::JoinHandle;
@@ -25,11 +25,14 @@ impl Server {
 
         // start the sender
         let (event_tx, event_rx): (Sender<Message>, Receiver<Message>) = mpsc::channel(10);
-        let sender_handle = start_sender(event_rx, socket_tx).await;
+
+        let writer = BufWriter::new(socket_tx);
+        let sender_handle = start_sender(event_rx, writer).await;
         trace!("sender running");
 
         // Start the listen loop
-        let reader_handle = start_listener(socket_rx, event_tx.clone()).await;
+        let reader = BufReader::new(socket_rx);
+        let reader_handle = start_listener(reader, event_tx.clone()).await;
         trace!("listener running");
 
         Ok(Server {
@@ -53,9 +56,10 @@ impl Server {
     }
 }
 
-async fn start_listener(socket_rx: OwnedReadHalf, sender: Sender<Message>) -> JoinHandle<()> {
-    let reader = BufReader::new(socket_rx);
-
+async fn start_listener<T>(reader: BufReader<T>, sender: Sender<Message>) -> JoinHandle<()>
+where
+    T: AsyncRead + Unpin + Send + 'static,
+{
     tokio::spawn(async move {
         let mut lines = reader.lines();
         while let Ok(Some(response)) = lines.next_line().await {
@@ -89,11 +93,12 @@ async fn handle_response(message: &ReceivedMessage, sender: Sender<Message>) -> 
     Ok(())
 }
 
-async fn start_sender(mut events: Receiver<Message>, socket_tx: OwnedWriteHalf) -> JoinHandle<()> {
-    let mut writer = BufWriter::new(socket_tx);
+async fn start_sender<T: AsyncWriteExt + Unpin + Send + 'static>(
+    mut events: Receiver<Message>,
+    mut writer: BufWriter<T>,
+) -> JoinHandle<()> {
     tokio::spawn(async move {
         while let Some(event) = events.recv().await {
-            trace!("sending event");
             match event.encode() {
                 Ok(payload) => {
                     trace!("sending {payload}");
