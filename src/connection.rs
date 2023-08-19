@@ -26,6 +26,7 @@ impl Server {
         // start the sender
         let (event_tx, event_rx): (Sender<Message>, Receiver<Message>) = mpsc::channel(10);
 
+        // start the sender loop
         let writer = BufWriter::new(socket_tx);
         let sender_handle = start_sender(event_rx, writer).await;
         trace!("sender running");
