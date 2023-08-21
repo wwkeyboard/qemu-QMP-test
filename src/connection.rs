@@ -1,13 +1,16 @@
+use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use crate::messages::client::{self, Message};
-use crate::messages::server::{self, ReceivedMessage};
+use crate::messages::server::{self, ReceivedMessage, Return};
 use anyhow::Result;
 use log::{debug, error, trace};
 use tokio::io::AsyncBufReadExt;
 use tokio::io::{AsyncRead, AsyncWriteExt, BufReader, BufWriter};
 use tokio::net::UnixStream;
 use tokio::sync::mpsc::{self, Receiver, Sender};
+use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 
 pub struct Server {
@@ -17,12 +20,15 @@ pub struct Server {
     pub event_tx: Sender<Message>,
 }
 
+type CallBackDB = Arc<Mutex<HashMap<usize, Box<dyn FnOnce(Return) -> ()>>>>;
+
 impl Server {
     pub async fn new(socket_path: PathBuf) -> Result<Server> {
         let stream = UnixStream::connect(&socket_path).await?;
 
         let (socket_rx, socket_tx) = stream.into_split();
 
+        let callbacks: CallBackDB = Arc::new(Mutex::new(HashMap::new()));
         // start the sender
         let (event_tx, event_rx): (Sender<Message>, Receiver<Message>) = mpsc::channel(10);
 
