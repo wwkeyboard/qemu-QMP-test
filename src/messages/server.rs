@@ -54,6 +54,7 @@ pub struct Qemu {
 pub struct Return {
     #[serde(rename = "return")]
     pub ret: Value,
+    pub id: usize,
 }
 
 pub fn parse(data: String) -> Result<ReceivedMessage> {
