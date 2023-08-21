@@ -54,7 +54,7 @@ pub struct Qemu {
 pub struct Return {
     #[serde(rename = "return")]
     pub ret: Value,
-    pub id: usize,
+    pub id: Option<usize>,
 }
 
 pub fn parse(data: String) -> Result<ReceivedMessage> {
@@ -89,5 +89,16 @@ mod tests {
         if let ReceivedMessage::Return(data) = parse(message).unwrap() {
             assert_eq!(data.ret, json!({}));
         };
+    }
+
+    #[test]
+    fn return_message_ids_are_optional() {
+        let message = String::from(r#"{"return": {}, "id": 3}"#);
+
+        if let ReceivedMessage::Return(ret) = parse(message).unwrap() {
+            assert_eq!(ret.id, Some(3));
+        } else {
+            panic!("parse didn't find a return")
+        }
     }
 }
