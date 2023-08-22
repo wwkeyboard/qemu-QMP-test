@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
 use crate::messages::client::{self, Message};
@@ -18,9 +19,11 @@ pub struct Server {
     reader_handle: JoinHandle<()>,
     sender_handle: JoinHandle<()>,
     pub event_tx: Sender<Message>,
+    callback_db: CallBackDB,
+    next_message_id: AtomicUsize,
 }
 
-type CallBackDB = Arc<Mutex<HashMap<usize, Box<dyn FnOnce(Return) -> ()>>>>;
+type CallBackDB = Arc<Mutex<HashMap<usize, Box<dyn Fn(Return) -> () + Send + 'static>>>>;
 
 impl Server {
     pub async fn new(socket_path: PathBuf) -> Result<Server> {
@@ -28,7 +31,7 @@ impl Server {
 
         let (socket_rx, socket_tx) = stream.into_split();
 
-        let callbacks: CallBackDB = Arc::new(Mutex::new(HashMap::new()));
+        let callback_db: CallBackDB = Arc::new(Mutex::new(HashMap::new()));
         // start the sender
         let (event_tx, event_rx): (Sender<Message>, Receiver<Message>) = mpsc::channel(10);
 
@@ -39,7 +42,7 @@ impl Server {
 
         // Start the listen loop
         let reader = BufReader::new(socket_rx);
-        let reader_handle = start_listener(reader, event_tx.clone()).await;
+        let reader_handle = start_listener(reader, event_tx.clone(), callback_db.clone()).await;
         trace!("listener running");
 
         Ok(Server {
@@ -47,11 +50,29 @@ impl Server {
             event_tx,
             reader_handle,
             sender_handle,
+            callback_db,
+            next_message_id: AtomicUsize::new(1),
         })
     }
 
     pub async fn send(&mut self, message: Message) -> Result<()> {
         self.event_tx.send(message).await?;
+        Ok(())
+    }
+
+    pub async fn call<T>(&mut self, message: Message, callback: T) -> Result<()>
+    where
+        T: Fn(Return) + Send + 'static,
+    {
+        let mut db = self.callback_db.lock().await;
+        let id = self.next_id();
+        db.insert(id, Box::new(callback));
+
+        let mut payload = message.clone();
+        payload.id = id;
+
+        self.event_tx.send(message).await?;
+
         Ok(())
     }
 
@@ -61,9 +82,17 @@ impl Server {
             _ = self.reader_handle => Ok(()),
         }
     }
+
+    fn next_id(&self) -> usize {
+        self.next_message_id.fetch_add(1, Ordering::Relaxed)
+    }
 }
 
-async fn start_listener<T>(reader: BufReader<T>, sender: Sender<Message>) -> JoinHandle<()>
+async fn start_listener<T>(
+    reader: BufReader<T>,
+    sender: Sender<Message>,
+    cb_db: CallBackDB,
+) -> JoinHandle<()>
 where
     T: AsyncRead + Unpin + Send + 'static,
 {
@@ -83,17 +112,21 @@ where
                 }
             };
 
-            if let Err(e) = handle_response(&parsed_response, sender.clone()).await {
+            if let Err(e) = handle_response(&parsed_response, sender.clone(), cb_db.clone()).await {
                 error!("handling response {:?}, {e}", parsed_response);
             }
         }
     })
 }
 
-async fn handle_response(message: &ReceivedMessage, sender: Sender<Message>) -> Result<()> {
+async fn handle_response(
+    message: &ReceivedMessage,
+    sender: Sender<Message>,
+    cb_db: CallBackDB,
+) -> Result<()> {
     match message {
         ReceivedMessage::Greeting(_g) => {
-            sender.send(client::capabilities(1)).await?;
+            sender.send(client::capabilities()).await?;
         }
         ReceivedMessage::Return(r) => trace!("received return value {r:#?}"),
     }
