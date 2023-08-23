@@ -132,8 +132,8 @@ async fn handle_response(
             trace!("received return value {r:#?}");
             if let Some(id) = r.id {
                 trace!("running callback for {id}");
-                let db = cb_db.lock().await;
-                if let Some(cb) = db.get(&id) {
+                let mut db = cb_db.lock().await;
+                if let Some(cb) = db.remove(&id) {
                     cb(r);
                 };
             }
