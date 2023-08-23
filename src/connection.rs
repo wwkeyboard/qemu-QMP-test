@@ -14,6 +14,16 @@ use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 
+/// Server tracks the connection with the QEMU QMP server.
+///
+/// This manages the sender and receiver to the QMP socket. It takes care of
+/// serializing communication so we don't intermix messages. It tracks callbacks
+/// to run when QEMU sends a response to a command.
+///
+/// next_message_id tracks the next safe message ID to send to with a message
+/// that expects a response.
+///
+///
 pub struct Server {
     pub path: PathBuf,
     reader_handle: JoinHandle<()>,
@@ -26,6 +36,7 @@ pub struct Server {
 type CallBackDB = Arc<Mutex<HashMap<usize, Box<dyn Fn(Return) -> () + Send + 'static>>>>;
 
 impl Server {
+    /// new opens the connections to the server and
     pub async fn new(socket_path: PathBuf) -> Result<Server> {
         let stream = UnixStream::connect(&socket_path).await?;
 
