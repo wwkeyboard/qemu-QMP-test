@@ -112,15 +112,15 @@ where
                 }
             };
 
-            if let Err(e) = handle_response(&parsed_response, sender.clone(), cb_db.clone()).await {
-                error!("handling response {:?}, {e}", parsed_response);
+            if let Err(e) = handle_response(parsed_response, sender.clone(), cb_db.clone()).await {
+                error!("handling response {e}");
             }
         }
     })
 }
 
 async fn handle_response(
-    message: &ReceivedMessage,
+    message: ReceivedMessage,
     sender: Sender<Message>,
     cb_db: CallBackDB,
 ) -> Result<()> {
@@ -128,7 +128,16 @@ async fn handle_response(
         ReceivedMessage::Greeting(_g) => {
             sender.send(client::capabilities()).await?;
         }
-        ReceivedMessage::Return(r) => trace!("received return value {r:#?}"),
+        ReceivedMessage::Return(r) => {
+            trace!("received return value {r:#?}");
+            if let Some(id) = r.id {
+                trace!("running callback for {id}");
+                let db = cb_db.lock().await;
+                if let Some(cb) = db.get(&id) {
+                    cb(r);
+                };
+            }
+        }
     }
     Ok(())
 }
