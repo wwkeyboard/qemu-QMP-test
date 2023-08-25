@@ -36,8 +36,9 @@ pub struct Server {
 type CallBackDB = Arc<Mutex<HashMap<usize, Box<dyn Fn(Return) -> () + Send + 'static>>>>;
 
 impl Server {
-    /// new opens the connections to the server and
-    pub async fn new(socket_path: PathBuf) -> Result<Server> {
+    /// binds to the socket at `socket_path`, creates some internal tracking data
+    /// structures, starts the sender and receiver.
+    pub async fn bind(socket_path: PathBuf) -> Result<Server> {
         let stream = UnixStream::connect(&socket_path).await?;
 
         let (socket_rx, socket_tx) = stream.into_split();

@@ -7,7 +7,7 @@ async fn main() -> Result<()> {
 
     pretty_env_logger::init();
 
-    let server = Server::new(args.path).await?;
+    let server = Server::bind(args.path).await?;
 
     if let Some(Commands::Send { payload }) = args.command {
         println!("-- {payload}");

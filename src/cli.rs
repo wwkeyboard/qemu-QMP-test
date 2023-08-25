@@ -28,4 +28,6 @@ pub enum Commands {
         #[arg(short, long)]
         payload: String,
     },
+    /// Open the socket and negotiate the connection, then watch the responses
+    Watch {},
 }
