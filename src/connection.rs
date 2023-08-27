@@ -146,7 +146,7 @@ async fn handle_response(
                 trace!("running callback for {id}");
                 let mut db = cb_db.lock().await;
                 if let Some(cb) = db.remove(&id) {
-                    cb(r);
+                    cb(*r);
                 };
             }
         }

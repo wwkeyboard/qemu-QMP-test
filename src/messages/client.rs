@@ -57,7 +57,7 @@ mod tests {
     #[test]
     fn empty_capabilities() {
         let result: Message =
-            serde_json::from_str(&serde_json::to_string(&capabilities(1)).unwrap()).unwrap();
+            serde_json::from_str(&serde_json::to_string(&capabilities()).unwrap()).unwrap();
 
         assert_eq!(
             result.arguments.get("enable"),
@@ -67,10 +67,9 @@ mod tests {
 
     #[test]
     fn sets_an_id() {
-        let id = 1;
-
+        // The IDs should start at 1
         let result: Message =
-            serde_json::from_str(&serde_json::to_string(&capabilities(id)).unwrap()).unwrap();
-        assert_eq!(result.id, id)
+            serde_json::from_str(&serde_json::to_string(&capabilities()).unwrap()).unwrap();
+        assert_eq!(result.id, 1)
     }
 }

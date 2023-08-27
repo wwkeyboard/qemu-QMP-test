@@ -8,8 +8,8 @@ use serde_json::Value;
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
 pub enum ReceivedMessage {
-    Greeting(Greeting),
-    Return(Return),
+    Greeting(Box<Greeting>),
+    Return(Box<Return>),
 }
 
 //
@@ -63,6 +63,8 @@ pub fn parse(data: String) -> Result<ReceivedMessage> {
 
 #[cfg(test)]
 mod tests {
+    use std::mem;
+
     use serde_json::json;
 
     use super::*;
@@ -100,5 +102,12 @@ mod tests {
         } else {
             panic!("parse didn't find a return")
         }
+    }
+
+    #[test]
+    fn size_of_received_message_is_box() {
+        println!("Return : {:?}", mem::size_of::<ReceivedMessage>());
+
+        panic!("done")
     }
 }
