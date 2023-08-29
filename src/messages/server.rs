@@ -106,8 +106,6 @@ mod tests {
 
     #[test]
     fn size_of_received_message_is_box() {
-        println!("Return : {:?}", mem::size_of::<ReceivedMessage>());
-
-        panic!("done")
+        assert_eq!(16, mem::size_of::<ReceivedMessage>());
     }
 }

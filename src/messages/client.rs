@@ -10,7 +10,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use serde_json::{Map, Value};
 
-static NEXT_MESSAGE_ID: AtomicUsize = AtomicUsize::new(0);
+static NEXT_MESSAGE_ID: AtomicUsize = AtomicUsize::new(1);
 fn next_id() -> usize {
     NEXT_MESSAGE_ID.fetch_add(1, Ordering::Relaxed)
 }
