@@ -1,4 +1,7 @@
 //! QMP messages that originate from the server
+//!
+//! `ReceivedMessage` is a container for all possible messages, it is the type you should
+//! match on to be sure you are handleing all possible cases.
 
 use anyhow::{anyhow, Result};
 use serde::Deserialize;
@@ -12,10 +15,9 @@ pub enum ReceivedMessage {
     Return(Box<Return>),
 }
 
-//
-// Greeting message
-//
-
+/// Greeting is the initial message sent when a connection opens. To get QEMU to start sending
+/// status information we need to respond with the client capabilities. This is automatically
+/// handled by qmp_qsl.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Greeting {
@@ -23,6 +25,7 @@ pub struct Greeting {
     pub qmp: Qmp,
 }
 
+/// Used by `Greeting`
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Qmp {
@@ -30,6 +33,7 @@ pub struct Qmp {
     pub capabilities: Vec<String>,
 }
 
+/// Used by `Greeting`
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Version {
@@ -37,6 +41,7 @@ pub struct Version {
     pub package: String,
 }
 
+/// Used by `Greeting`
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Qemu {
@@ -45,10 +50,8 @@ pub struct Qemu {
     pub major: u64,
 }
 
-//
-// Return message
-//
-
+/// If you provide an ID with some of the requests the QEMU process will respond with a message
+/// also tagged with that ID. The
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Return {
@@ -57,6 +60,7 @@ pub struct Return {
     pub id: Option<usize>,
 }
 
+/// Takes a string of json and tries to turn it into a `ReceivedMessage`
 pub fn parse(data: String) -> Result<ReceivedMessage> {
     serde_json::from_str(&data).map_err(|e| anyhow!("parsing return data {}", e))
 }
