@@ -150,6 +150,9 @@ async fn handle_response(
                 };
             }
         }
+        ReceivedMessage::Event(event) => {
+            trace!("received event {event:?}");
+        }
     }
     Ok(())
 }

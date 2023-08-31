@@ -13,6 +13,7 @@ use serde_json::Value;
 pub enum ReceivedMessage {
     Greeting(Box<Greeting>),
     Return(Box<Return>),
+    Event(Box<Event>),
 }
 
 /// Greeting is the initial message sent when a connection opens. To get QEMU to start sending
@@ -58,6 +59,29 @@ pub struct Return {
     #[serde(rename = "return")]
     pub ret: Value,
     pub id: Option<usize>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Event {
+    pub timestamp: Timestamp,
+    pub event: String,
+    pub data: Data,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Timestamp {
+    pub seconds: i64,
+    pub microseconds: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Data {
+    pub offset: i64,
+    #[serde(rename = "qom-path")]
+    pub qom_path: String,
 }
 
 /// Takes a string of json and tries to turn it into a `ReceivedMessage`
@@ -111,5 +135,20 @@ mod tests {
     #[test]
     fn size_of_received_message_is_box() {
         assert_eq!(16, mem::size_of::<ReceivedMessage>());
+    }
+
+    #[test]
+    fn parses_event_message() {
+        let message = String::from(
+            r#"{"timestamp": {"seconds": 1693429073, "microseconds": 944495},
+  "event": "RTC_CHANGE", 
+  "data": {"offset": 1, "qom-path": "/machine/unattached/device[7]"}}"#,
+        );
+
+        if let ReceivedMessage::Event(e) = parse(message).unwrap() {
+            assert_eq!(e.timestamp.microseconds, 944495);
+        } else {
+            panic!("didn't parse event correctly");
+        }
     }
 }
