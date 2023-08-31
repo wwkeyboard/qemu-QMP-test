@@ -61,6 +61,7 @@ pub struct Return {
     pub id: Option<usize>,
 }
 
+/// An event sent from QEMU, these are unprompted and won't be tied to an ID we've sent.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Event {
@@ -69,6 +70,7 @@ pub struct Event {
     pub data: Data,
 }
 
+/// Used by `Event`
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Timestamp {
@@ -76,6 +78,7 @@ pub struct Timestamp {
     pub microseconds: i64,
 }
 
+/// Used by `Event`
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Data {
