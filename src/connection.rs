@@ -33,7 +33,7 @@ pub struct Server {
     next_message_id: AtomicUsize,
 }
 
-type CallBackDB = Arc<Mutex<HashMap<usize, Box<dyn Fn(Return) -> () + Send + 'static>>>>;
+type CallBackDB = Arc<Mutex<HashMap<usize, Box<dyn Fn(Return) + Send + 'static>>>>;
 
 impl Server {
     /// binds to the socket at `socket_path`, creates some internal tracking data
